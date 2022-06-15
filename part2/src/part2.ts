@@ -14,10 +14,10 @@ export function makeTableService<T>(sync: (table?: Table<T>) => Promise<Table<T>
     // optional initialization code
     return {
         get(key: string): Promise<T> {
-            return new Promise(function (resolve, reject){
+            return new Promise(function (resolve, reject) {
                 sync()
-                    .then(table=> {
-                        if(key in table)
+                    .then(table => {
+                        if (key in table)
                             resolve(table[key]);
                         else
                             reject(MISSING_KEY);
@@ -28,9 +28,9 @@ export function makeTableService<T>(sync: (table?: Table<T>) => Promise<Table<T>
             });
         },
         set(key: string, val: T): Promise<void> {
-            return new Promise(function (resolve, reject){
+            return new Promise(function (resolve, reject) {
                 sync()
-                    .then(table=>{
+                    .then(table => {
                         const modified_table: Record<string, Readonly<T>> = Object.assign({}, table)
                         modified_table[key] = val;
                         sync(modified_table)
@@ -41,16 +41,16 @@ export function makeTableService<T>(sync: (table?: Table<T>) => Promise<Table<T>
             });
         },
         delete(key: string): Promise<void> {
-            return new Promise(function (resolve, reject){
+            return new Promise(function (resolve, reject) {
                 sync()
-                    .then(table=>{
+                    .then(table => {
                         if (key in table) {
                             const modified_table: Record<string, Readonly<T>> = Object.assign({}, table)
                             delete modified_table[key]
                             sync(modified_table)
                                 .then(_ => resolve())
                                 .catch((err) => reject(err))
-                        }else reject(MISSING_KEY);
+                        } else reject(MISSING_KEY);
                     })
                     .catch((err) => reject(err))
             });
@@ -62,7 +62,7 @@ export function makeTableService<T>(sync: (table?: Table<T>) => Promise<Table<T>
 // Q 2.1 (b)
 export function getAll<T>(store: TableService<T>, keys: string[]): Promise<T[]> {
     const values: Promise<T>[] = []
-    keys.map((key:string) => values.push(store.get(key)));
+    keys.map((key: string) => values.push(store.get(key)));
     return Promise.all(values)
 }
 
@@ -77,9 +77,16 @@ export function isReference<T>(obj: T | Reference): obj is Reference {
 
 export async function constructObjectFromTables(tables: TableServiceTable, ref: Reference) {
     async function deref(ref: Reference) {
-        return Promise.reject('not implemented')
+        if (ref.table in tables) {
+            const obj: object = await tables[ref.table].get(ref.key);
+            for (const [key, val] of Object.entries(obj)){
+                if(isReference(val))
+                    Object.assign(obj, {[key]: await deref(val)})
+            }
+            return obj;
+        } else
+            return Promise.reject(MISSING_TABLE_SERVICE);
     }
-
     return deref(ref)
 }
 
@@ -87,13 +94,18 @@ export async function constructObjectFromTables(tables: TableServiceTable, ref: 
 
 export function lazyProduct<T1, T2>(g1: () => Generator<T1>, g2: () => Generator<T2>): () => Generator<[T1, T2]> {
     return function* () {
-        // TODO implement!
+        for (let first of g1())
+            for (let second of g2())
+                yield [first, second];
     }
 }
 
 export function lazyZip<T1, T2>(g1: () => Generator<T1>, g2: () => Generator<T2>): () => Generator<[T1, T2]> {
     return function* () {
-        // TODO implement!
+        let first = g1();
+        for (let second of g2()){
+            yield [first.next().value, second];
+        }
     }
 }
 
