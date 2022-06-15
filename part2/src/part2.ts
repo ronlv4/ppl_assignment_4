@@ -14,22 +14,57 @@ export function makeTableService<T>(sync: (table?: Table<T>) => Promise<Table<T>
     // optional initialization code
     return {
         get(key: string): Promise<T> {
-            return Promise.reject('not implemented')
+            return new Promise(function (resolve, reject){
+                sync()
+                    .then(table=> {
+                        if(key in table)
+                            resolve(table[key]);
+                        else
+                            reject(MISSING_KEY);
+                    })
+                    .catch((err?: any) => {
+                        reject(err);
+                    })
+            });
         },
         set(key: string, val: T): Promise<void> {
-            return Promise.reject('not implemented')
+            return new Promise(function (resolve, reject){
+                sync()
+                    .then(table=>{
+                        const modified_table: Record<string, Readonly<T>> = Object.assign({}, table)
+                        modified_table[key] = val;
+                        sync(modified_table)
+                            .then(_ => resolve())
+                            .catch((err) => reject(err))
+                    })
+                    .catch((err) => reject(err));
+            });
         },
         delete(key: string): Promise<void> {
-            return Promise.reject('not implemented')
+            return new Promise(function (resolve, reject){
+                sync()
+                    .then(table=>{
+                        if (key in table) {
+                            const modified_table: Record<string, Readonly<T>> = Object.assign({}, table)
+                            delete modified_table[key]
+                            sync(modified_table)
+                                .then(_ => resolve())
+                                .catch((err) => reject(err))
+                        }else reject(MISSING_KEY);
+                    })
+                    .catch((err) => reject(err))
+            });
+
         }
     }
 }
 
 // Q 2.1 (b)
 export function getAll<T>(store: TableService<T>, keys: string[]): Promise<T[]> {
-    return Promise.reject('not implemented')
+    const values: Promise<T>[] = []
+    keys.map((key:string) => values.push(store.get(key)));
+    return Promise.all(values)
 }
-
 
 // Q 2.2
 export type Reference = { table: string, key: string }

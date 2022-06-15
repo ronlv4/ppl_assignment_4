@@ -1,11 +1,13 @@
 // L5-typecheck
 // ========================================================
 import { equals, filter, flatten, includes, map, intersection, zipWith, reduce } from 'ramda';
-import { isAppExp, isBoolExp, isDefineExp, isIfExp, isLetrecExp, isLetExp, isNumExp,
-         isPrimOp, isProcExp, isProgram, isStrExp, isVarRef, unparse, parseL51,
-         AppExp, BoolExp, DefineExp, Exp, IfExp, LetrecExp, LetExp, NumExp, SetExp, LitExp,
-         Parsed, PrimOp, ProcExp, Program, StrExp, isSetExp, isLitExp, 
-         isDefineTypeExp, isTypeCaseExp, DefineTypeExp, TypeCaseExp, CaseExp } from "./L5-ast";
+import {
+    isAppExp, isBoolExp, isDefineExp, isIfExp, isLetrecExp, isLetExp, isNumExp,
+    isPrimOp, isProcExp, isProgram, isStrExp, isVarRef, unparse, parseL51,
+    AppExp, BoolExp, DefineExp, Exp, IfExp, LetrecExp, LetExp, NumExp, SetExp, LitExp,
+    Parsed, PrimOp, ProcExp, Program, StrExp, isSetExp, isLitExp,
+    isDefineTypeExp, isTypeCaseExp, DefineTypeExp, TypeCaseExp, CaseExp, makeNumExp, makeBoolExp
+} from "./L5-ast";
 import { applyTEnv, makeEmptyTEnv, makeExtendTEnv, TEnv } from "./TEnv";
 import { isProcTExp, makeBoolTExp, makeNumTExp, makeProcTExp, makeStrTExp, makeVoidTExp,
          parseTE, unparseTExp, Record,
@@ -14,6 +16,9 @@ import { isProcTExp, makeBoolTExp, makeNumTExp, makeProcTExp, makeStrTExp, makeV
          isRecord, ProcTExp, makeUserDefinedNameTExp, Field, makeAnyTExp, isAnyTExp, isUserDefinedNameTExp } from "./TExp";
 import { isEmpty, allT, first, rest, cons } from '../shared/list';
 import { Result, makeFailure, bind, makeOk, zipWithResult, mapv, mapResult, isFailure, either } from '../shared/result';
+import exp from "constants";
+import {isBoolean, isNumber, isString} from "../shared/type-predicates";
+import {Closure, CompoundSExp, EmptySExp, isClosure, isSymbolSExp, SymbolSExp} from "./L5-value";
 
 // L51
 export const getTypeDefinitions = (p: Program): UserDefinedTExp[] => {
@@ -381,12 +386,20 @@ export const typeofDefineType = (exp: DefineTypeExp, _tenv: TEnv, _p: Program): 
 
 // TODO L51
 export const typeofSet = (exp: SetExp, _tenv: TEnv, _p: Program): Result<TExp> =>
-    makeFailure(`Todo ${JSON.stringify(exp, null, 2)}`);
+    bind(applyTEnv(_tenv, exp.var.var), makeOk);
 
 // TODO L51
 export const typeofLit = (exp: LitExp, _tenv: TEnv, _p: Program): Result<TExp> =>
-    makeFailure(`Todo ${JSON.stringify(exp, null, 2)}`);
+    isNumber(exp.val) ? makeOk(makeNumTExp()) :
+        isBoolean(exp.val) ? makeOk(makeBoolTExp()) :
+            isString(exp.val) ? makeOk(makeStrTExp()) :
+                isPrimOp(exp.val) ? typeofPrim(exp.val) :
+                    isClosure(exp.val) ?
+                        isSymbolSExp(exp.val) ?
+                            isEmpty(exp.val) ? typeofE
+                makeFailure("unknown lit exp");
 
+//export type SExpValue = number | boolean | string | PrimOp | Closure | SymbolSExp | EmptySExp | CompoundSExp | void;
 // TODO: L51
 // Purpose: compute the type of a type-case
 // Typing rule:

@@ -124,8 +124,10 @@ describe('L5 Type Checker', () => {
             expect(L51typeof("(define (x : (Empty -> number)) (lambda () : number 1))")).toEqual(makeOk("void"));
         });
 
-        it.skip('returns "literal" as the type for literal expressions', () => {
+        it('returns "literal" as the type for literal expressions', () => {
             expect(L51typeof("(quote ())")).toEqual(makeOk("literal"));
+            expect(L51typeof("(quote 5)")).toEqual(makeOk("literal"));
+            expect(L51typeof("(quote hello)")).toEqual(makeOk("literal"));
         });
 	});
 
