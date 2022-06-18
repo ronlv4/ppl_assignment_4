@@ -1,5 +1,5 @@
 import { isTypedArray } from 'util/types';
-import { isProgram, parseL51, Program } from '../src/L5/L5-ast';
+import {isProgram, makeBoolExp, makeSetExp, makeVarRef, parseL51, Program} from '../src/L5/L5-ast';
 import { typeofProgram, L51typeof, initTEnv, getRecords, getTypeDefinitions,
          checkEqualType, getParentsType, coverTypes, checkCoverType, getUserDefinedTypeByName, mostSpecificType } from '../src/L5/L5-typecheck';
 import { applyTEnv } from '../src/L5/TEnv';

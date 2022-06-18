@@ -47,12 +47,12 @@ import { cons, first, rest } from '../shared/list';
 import { Result, bind, makeOk, makeFailure, mapResult, mapv } from "../shared/result";
 import { isCompoundSexp, isToken, parse as p } from "../shared/parser";
 
-export type TExp =  AtomicTExp | CompoundTExp | TVar | UserDefinedNameTExp; // L51
+export type TExp =  AtomicTExp | CompoundTExp | TVar | UserDefinedNameTExp | LitTExp// L51
 export const isTExp = (x: any): x is TExp => isAtomicTExp(x) || isCompoundTExp(x) || isTVar(x) || isUserDefinedNameTExp(x); // L51
 
 export type AtomicTExp = NumTExp | BoolTExp | StrTExp | VoidTExp | UserDefinedNameTExp | AnyTExp; // L51
 export const isAtomicTExp = (x: any): x is AtomicTExp =>
-    isNumTExp(x) || isBoolTExp(x) || isStrTExp(x) || isVoidTExp(x) || isUserDefinedNameTExp(x) || isAnyTExp(x); // L51
+    isNumTExp(x) || isBoolTExp(x) || isStrTExp(x) || isVoidTExp(x) || isUserDefinedNameTExp(x) || isAnyTExp(x) || isLitTExp(x);// L51
 
 export type CompoundTExp = ProcTExp | TupleTExp | UserDefinedTExp | Record;  // L51
 export const isCompoundTExp = (x: any): x is CompoundTExp => isProcTExp(x) || isTupleTExp(x) || isUserDefinedTExp(x); 
@@ -106,6 +106,10 @@ export const isStrTExp = (x: any): x is StrTExp => x.tag === "StrTExp";
 export type VoidTExp = { tag: "VoidTExp" };
 export const makeVoidTExp = (): VoidTExp => ({tag: "VoidTExp"});
 export const isVoidTExp = (x: any): x is VoidTExp => x.tag === "VoidTExp";
+
+export type LitTExp = { tag: "LitTExp"};
+export const makeLitTExp = (): LitTExp => ({tag: "LitTExp"});
+export const isLitTExp = (x: any): x is LitTExp => x.tag === "LitTExp";
 
 // proc-te(param-tes: list(te), return-te: te)
 export type ProcTExp = { tag: "ProcTExp"; paramTEs: TExp[]; returnTE: TExp; };
@@ -209,6 +213,7 @@ export const parseTExp = (texp: Sexp, udTypeNames: string[]): Result<TExp> => //
     (texp === "void") ? makeOk(makeVoidTExp()) :
     (texp === "string") ? makeOk(makeStrTExp()) :
     (texp === "any") ? makeOk(makeAnyTExp()) :
+    (texp === "literal") ? makeOk(makeLitTExp()) :
     isString(texp) && isConcreteTVar(texp) ? makeOk(makeTVar(texp)) :
     isString(texp) && isConcreteUserDefinedTypeName(texp, udTypeNames) ? makeOk(makeUserDefinedNameTExp(texp)) : // L51
     isString(texp) ? makeFailure(`Expected either TVar or UDType - got ${texp} / ${udTypeNames}`) :
@@ -335,6 +340,7 @@ export const unparseTExp = (te: TExp): Result<string> => {
         isStrTExp(x) ? makeOk('string') :
         isVoidTExp(x) ? makeOk('void') :
         isAnyTExp(x) ? makeOk('any') :
+        isLitTExp(x) ? makeOk('literal') :
         isEmptyTVar(x) ? makeOk(x.var) :
         isUserDefinedNameTExp(x) ? makeOk(x.typeName) :
         isTVar(x) ? up(tvarContents(x)) :
