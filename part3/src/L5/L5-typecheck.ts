@@ -1,6 +1,6 @@
 // L5-typecheck
 // ========================================================
-import { equals, filter, flatten, map, intersection, zipWith, reduce } from 'ramda';
+import {equals, filter, flatten, map, intersection, zipWith, reduce, all} from 'ramda';
 import {
     isAppExp, isBoolExp, isDefineExp, isIfExp, isLetrecExp, isLetExp, isNumExp, isPrimOp, isProcExp, isProgram,
     isStrExp, isVarRef, isSetExp, isLitExp, isDefineTypeExp, isTypeCaseExp, unparse, parseL51,
@@ -12,7 +12,7 @@ import {
     isProcTExp, makeBoolTExp, makeNumTExp, makeProcTExp, makeStrTExp, makeVoidTExp, parseTE, unparseTExp,
     Record, BoolTExp, NumTExp, StrTExp, TExp, VoidTExp, UserDefinedTExp, UDTExp,
     isUserDefinedTExp, isNumTExp, isBoolTExp, isStrTExp, isVoidTExp, isRecord, isAnyTExp, isUserDefinedNameTExp,
-    makeUserDefinedNameTExp, makeAnyTExp, makeLitTExp, UserDefinedNameTExp, ProcTExp, Field
+    makeUserDefinedNameTExp, makeAnyTExp, makeLitTExp, UserDefinedNameTExp, ProcTExp, Field, makeEmptyTupleTExp
 } from "./TExp";
 import { isEmpty, allT, first, rest, cons } from '../shared/list';
 import { Result, makeFailure, bind, makeOk, zipWithResult, mapv, isFailure, either } from '../shared/result';
@@ -162,35 +162,67 @@ export const checkCoverType = (types: TExp[], p: Program): Result<TExp> => {
 // Type predicate for all user-defined-types
 // All globally defined variables (with define)
 
-export const makeExtendUDPredicate = (typeName: string, tenv: TEnv): boolean =>
-    makeExtendTEnv(makeTyp)
+// export const makeExtendUDPredicate = (typeName: string, tenv: TEnv): boolean =>
+//     makeExtendTEnv(makeTyp)
 
-export const makeExtendRecordPredicate = (defineType: DefineTypeExp, tenv: TEnv): boolean =>
-    defineType.udType
+// export const makeExtendRecordPredicate = (defineType: DefineTypeExp, tenv: TEnv): boolean =>
+//     defineType.udType
 
 // TODO: Define here auxiliary functions for TEnv computation
 
 export const createConstructorName = (typeName: string): string =>
     `make-${typeName}`
 
-export const createConstructor = (defineTypeExp: DefineTypeExp): ProcTExp =>
-    defineTypeExp.udType.records.map((rec: Record) => makeProcTExp(rec.fields.map((field: Field) => field.te), ))
-    makeProcTExp(
+// export const createConstructor = (defineTypeExp: DefineTypeExp): ProcTExp =>
+//     defineTypeExp.udType.records.map((rec: Record) => makeProcTExp(rec.fields.map((field: Field) => field.te), ))
+//     makeProcTExp(
     // makeProcTExp(get.rec.fields.map((field) => field.te), defineTypeExp.udType);
-export const makeExtendTypeConstructor = (defineTypeExp: DefineTypeExp, tenv: TEnv, p: Program): boolean =>
-    getRecords(p).map(defineTypeExp.)
-    makeExtendTEnv(rec.typeName, rec.
-    ...
+// export const makeExtendTypeConstructor = (defineTypeExp: DefineTypeExp, tenv: TEnv, p: Program): boolean =>
+//     getRecords(p).map(defineTypeExp.)
+//     makeExtendTEnv(rec.typeName, rec.
+//     ...
 
-export const makeExtendVarType = (varName: string, tenv: TEnv): boolean =>
-    ...
+// export const makeExtendVarType = (varName: string, tenv: TEnv): boolean =>{}
 // TODO L51
+
+export const createTypePredName = (typeName: string): string => `${typeName}?`
+
 // Initialize TEnv with:
+// export const makeExtendTypePred = (typeName: string, tenv: TEnv): TEnv => {
+//     makeExtendTEnv(createTypePredName(typeName), makeProcTExp(makeEmptyTupleTExp(), makeBoolTExp()), tenv);
+// }
+
 // * Type of global variables (define expressions at top level of p)
+export const constructUDInducedFunctions = (udType: UserDefinedTExp, tenv: TEnv, p: Program): TEnv => {
+        // add Type predicates for all user defined records i.e circle?, rectangle?
+        tenv = makeExtendTEnv(map((rec: Record) => createTypePredName(rec.typeName), udType.records),
+    map((rec: Record) => makeProcTExp([makeEmptyTupleTExp()], makeBoolTExp()), udType.records),
+    tenv);
+
+        // add Type constructor for all user defined records i.e make-circle, make-rectangle
+    map((rec: Record) => bind(getUserDefinedTypeByName(rec.typeName, p), (typeDef: UserDefinedTExp) =>
+        makeOk(tenv = makeExtendTEnv(map((rec: Record) => createConstructorName(rec.typeName), udType.records),
+        map((rec: Record) => makeProcTExp(rec.fields.map((field) => field.te), typeDef), udType.records),
+        tenv))),
+        udType.records);
+    return tenv;
+}
+
 // * Type of implicitly defined procedures for user defined types (define-type expressions in p)
-export const initTEnv = (p: Program): TEnv =>
-    getTypeDefinitions(p).map((typeDef)
-    makeEmptyTEnv();
+export const initTEnv = (p: Program): TEnv => {
+    const tenv: TEnv = makeEmptyTEnv();
+        const allTypeDef = getTypeDefinitions(p);
+        const allRecords = getRecords(p);
+
+        allTypeDef.forEach((defineTypeExp: UserDefinedTExp) => constructUDInducedFunctions(defineTypeExp, tenv, p));
+
+        // add Type predicates for all user defined types i.e Shape?
+        makeExtendTEnv(map((udType: UserDefinedTExp) => createTypePredName(udType.typeName), allTypeDef),
+            map((udType: UserDefinedTExp) => makeProcTExp([makeEmptyTupleTExp()], makeBoolTExp()), allTypeDef),
+            tenv);
+
+    return tenv;
+}
 
 // DefineTypeExp - DefineTypeExp {tag: "DefineTypeExp"; typeName: string; udType: UserDefinedTExp};
 // UserDefinedTExp - {tag: "UserDefinedTExp"; typeName: string; records: Record[]};
